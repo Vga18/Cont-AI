@@ -3,8 +3,6 @@ import os
 
 import streamlit as st
 from dotenv import load_dotenv
-
-# import xmltodict
 from lxml import etree
 from openai import OpenAI
 
