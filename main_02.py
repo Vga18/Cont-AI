@@ -115,7 +115,7 @@ if "clasificacion" not in st.session_state:
     st.session_state.clasificacion = []
 
 if "catalogo" not in st.session_state:
-    st.session_state.catalogo = read_csv(os.path.join("utils", "catalogo contable.csv"))
+    st.session_state.catalogo = read_csv(os.path.join("utils", "catalogo_contable.csv"))
 
 
 # ============================

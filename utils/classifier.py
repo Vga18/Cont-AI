@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from pathlib import Path
 
 import joblib
 import pandas as pd
@@ -114,7 +115,12 @@ def construir_dataframe_modelo(datos_xml):
 
 def get_clasificar_xmls(datos_xml, umbral=0.65):
 
-    pipeline = joblib.load(r"utils\classificador contable.pkl")
+    BASE_DIR = Path(__file__).resolve().parent
+    MODEL_PATH = BASE_DIR / "classificador_contable.pkl"
+
+    pipeline = joblib.load(MODEL_PATH)
+
+    # pipeline = joblib.load(r"utils\classificador_contable.pkl")
 
     df_nuevo = construir_dataframe_modelo(datos_xml)
 
