@@ -3,6 +3,7 @@ import unicodedata
 
 import joblib
 import pandas as pd
+from numpy import nan
 
 
 def limpiar_texto(texto: str) -> str:
@@ -20,17 +21,49 @@ def limpiar_texto(texto: str) -> str:
     return texto
 
 
-def contruir_poliza_eg(xml, cuenta):
+def clean_text(text, pattern="[^a-zA-Z0-9 ]"):
+    cleaned_text = unicodedata.normalize("NFD", text).encode("ascii", "ignore")
+    cleaned_text = re.sub(pattern, " ", cleaned_text.decode("utf-8"), flags=re.UNICODE)
+    cleaned_text = " ".join(cleaned_text.lower().split())
+    return cleaned_text
 
-    concept = " "
+
+def normalizar_condicion(x):
+    if pd.isna(x):
+        return "sin definir"
+
+    x = str(x).strip(" ")
+
+    if "credito" in x:
+        return "credito"
+
+    if any(p in x for p in ["contado", "0 dias", "inmediato", "efectivo"]):
+        return "contado"
+
+    else:
+        return "otros"
+
+
+def contruir_poliza_eg(xml, cuenta, catalogo):
+
+    aux = cuenta[:4] + "." + cuenta[4:7] + "." + cuenta[-4:]
+    resultado = catalogo.loc[catalogo["NUM_CTA"] == aux, "NOMBRE"]
+
+    if not resultado.empty:
+        concept = resultado.iloc[0]
+    else:
+        concept = "Sin definir"
+
     iva = xml["Retenido IVA"]
     total = xml["Total"]
-    factura = xml["Serie"] + "-" + xml["Folio"] + " " + xml["Nombre Emisor"]
+    factura = (
+        str(xml["Serie"]) + "-" + str(xml["Folio"]) + " " + str(xml["Nombre Emisor"])
+    )
 
     aux = pd.DataFrame(
         {
-            "NUM_CTA": [cuenta, "1200.001.000", "1000.000.000"],
-            "CONCEPTO": [concept, "IVA acreditable", "Activo (general)"],
+            "NUM_CTA": [aux, "1200.001.0002", "1000.000.000"],
+            "CONCEPTO": [concept, "IVA ACREDITABLE PAGADO", "Activo (general)"],
             "NOMBRE_POL": [
                 f"FACTURA {factura}",
                 f"FACTURA {factura}",
@@ -50,17 +83,27 @@ def procesar_conceptos(texto):
     return " ".join(lista_limpia)
 
 
+def eliminar_null(row):
+    if pd.isna(row):
+        return "sin definir"
+    else:
+        return row
+
+
 def construir_dataframe_modelo(datos_xml):
     concepto_unido = procesar_conceptos(datos_xml["Conceptos"])
+
+    Condicion_de_Pago = clean_text(datos_xml["Condicion de Pago"])
+    Condicion_de_Pago = normalizar_condicion(datos_xml["Condicion de Pago"])
 
     df_nuevo = pd.DataFrame(
         [
             {
-                "RFC Emisor": datos_xml["RFC Emisor"],
-                "UsoCFDI": datos_xml["UsoCFDI"],
-                "Metodo de Pago": datos_xml["Metodo de Pago"],
-                "Condicion de Pago": datos_xml["Condicion de Pago"],
-                "RegimenFiscalEmisor": datos_xml["RegimenFiscalEmisor"],
+                "RFC Emisor": eliminar_null(datos_xml["RFC Emisor"]),
+                "UsoCFDI": eliminar_null(datos_xml["UsoCFDI"]),
+                "Metodo de Pago": eliminar_null(datos_xml["Metodo de Pago"]),
+                "Condicion de Pago": Condicion_de_Pago,
+                "RegimenFiscalEmisor": eliminar_null(datos_xml["RegimenFiscalEmisor"]),
                 "concepto_unido": concepto_unido,
             }
         ]
@@ -76,19 +119,5 @@ def get_clasificar_xmls(datos_xml, umbral=0.65):
     df_nuevo = construir_dataframe_modelo(datos_xml)
 
     pred = pipeline.predict(df_nuevo)[0]
-    proba = pipeline.predict_proba(df_nuevo).max()
 
     return pred
-
-    # print(pred)
-
-    # if proba >= umbral:
-    #     decision = "AUTOMATICO"
-    # else:
-    #     decision = "REVISION"
-
-    # return {
-    #     "cuenta_predicha": pred,
-    #     "confianza": round(float(proba), 4),
-    #     "decision": decision,
-    # }

@@ -89,7 +89,7 @@ def extraer_pue_ppd(root: etree._Element, namespaces: dict) -> dict:
         "Tipo de Cambio": x("TipoCambio", nan),
         "Forma de Pago": x("FormaPago", nan),
         "Metodo de Pago": x("MetodoPago", nan),
-        "Condicion de Pago": x("CondicionesDePago", nan),
+        "Condicion de Pago": x("CondicionesDePago", "sin definir"),
         "Conceptos": descripcion_total,
     }
 
@@ -121,18 +121,7 @@ def parse_cfdi(xmls: List[Union[str, BytesIO]]) -> DataFrame:
 
     df_xmls = []
     for archivo in xmls:
-        # if archivo.startswith(b"\xef\xbb\xbf"):
-        #     archivo = archivo.decode("utf-8").encode("utf-8")
-
         try:
-            parser = etree.XMLParser(
-                resolve_entities=False,  # Protección XXE
-                recover=True,  # Recupera XML malformado
-                remove_blank_text=True,
-                no_network=True,
-            )
-
-            # tree = etree.parse(BytesIO(archivo))
             tree = etree.parse(archivo)
             root = tree.getroot()
             namespaces = {
@@ -145,8 +134,6 @@ def parse_cfdi(xmls: List[Union[str, BytesIO]]) -> DataFrame:
             df_xmls.append(datos)
 
         except Exception as e:
-            # Logging limpio (en producción usar logging.warning)
-            # print(f"[WARNING] Error procesando{archivo}:{str(e)}")
             continue
 
     if not df_xmls:
